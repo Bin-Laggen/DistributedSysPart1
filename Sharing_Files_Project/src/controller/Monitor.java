@@ -164,7 +164,8 @@ public class Monitor extends Observable implements SharingSystem, Runnable {
 		{
 			if(checkForChange())
 			{
-				while(wait)
+				wait = true;
+				while(hasChanged())
 				{
 					try 
 					{
