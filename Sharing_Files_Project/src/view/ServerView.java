@@ -7,6 +7,7 @@ import java.util.Observable;
 import java.util.Observer;
 
 import controller.Monitor;
+import javafx.application.Platform;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.layout.HBox;
@@ -55,41 +56,28 @@ public class ServerView extends VBox implements Observer {
 				drawFileButtons(mon.getNames());
 			}
 		});
-		
-		primaryStage.setOnCloseRequest(e->{
-			mon.stopThread();
-		});
 	}
 	
 	public void drawFileButtons(String[] names)
 	{
-		System.out.println("---");
-		System.out.println(this.getChildren().toString());
-		this.getChildren().clear();
-		System.out.println(this.getChildren().toString());
-		System.out.println("a");
+		Platform.runLater(() -> this.getChildren().clear());
 		for(int i = 0; i < names.length; i++)
 		{
-			System.out.println("b");
 			boolean found = false;
 			String[] localFiles = dest.list(new FilenameFilter() {
 			    @Override
 			    public boolean accept(File dir, String name) 
 			    {
-			    	System.out.println("c");
 			        return name.endsWith(".mp3");
 			    } 
 			});
-			System.out.println("d");
 			for(int j = 0; j < localFiles.length; j++)
 			{
-				System.out.println("e");
 				if(names[i].equals(localFiles[j]))
 				{
 					found = true;
 				}
 			}
-			System.out.println("f");
 			HBox tmpBox = new HBox(5);
 			Label tmpText = new Label(names[i]);
 			tmpText.setPrefWidth(300);
@@ -102,7 +90,6 @@ public class ServerView extends VBox implements Observer {
 			Button tmpLoad = new Button("Load");
 			tmpLoad.setId(names[i]);
 			tmpLoad.setMinWidth(30);
-			System.out.println("g");
 			if(found)
 			{
 				tmpDwnld.setDisable(true);
@@ -113,9 +100,7 @@ public class ServerView extends VBox implements Observer {
 				tmpDwnld.setDisable(false);
 				tmpLoad.setDisable(true);
 			}
-			System.out.println("h");
 			tmpPlay.setDisable(true);
-			System.out.println("i");
 			tmpDwnld.setOnAction(e->{
 				try 
 				{
@@ -151,14 +136,10 @@ public class ServerView extends VBox implements Observer {
 				System.out.println(mPlayer.getMedia().getSource());
 				tmpPlay.setDisable(false);
 			});
-			System.out.println("j");
 			tmpBox.getChildren().addAll(tmpText, tmpDwnld, tmpLoad, tmpPlay);
-			System.out.println("k");
-			this.getChildren().add(tmpBox);
-			System.out.println("l");
+			Platform.runLater(() -> this.getChildren().add(tmpBox));
 		}
-		this.getChildren().addAll(text, selectDestButton);
-		System.out.println("m");
+		Platform.runLater(() -> this.getChildren().addAll(text, selectDestButton));
 	}
 
 	@Override

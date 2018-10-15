@@ -10,40 +10,17 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Observable;
 import java.util.Observer;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 public class Monitor extends Observable implements SharingSystem, Runnable {
 	
 	private static Monitor monitor_instance = null;
 	private final String PATH = "D:\\Dokumenty\\College\\Year 3\\Java - Distributed Systems Programming\\Server\\";
 	private String[] fileNames = null;
-	//private ScheduledExecutorService executor;
 	private Thread t;
-	private boolean wait;
 	
 	private Monitor()
 	{
-		wait = false;
 		getNames();
-		/*
-		ScheduledExecutorService exec = Executors.newSingleThreadScheduledExecutor(); 
-		exec.scheduleAtFixedRate(() -> {
-			System.out.println("CHECKING...");
-			checkForChange();
-			}, 1, 100, TimeUnit.MILLISECONDS);
-			*/
-
-		/*
-		executor = Executors.newScheduledThreadPool(1);
-		executor.scheduleAtFixedRate(new Runnable() {
-		    public void run() {
-		    	checkForChange();
-		    }
-		}, 10, 1000, TimeUnit.MILLISECONDS);
-		*/
-		
 		t = new Thread(this, "Check Change Thread");
 		t.start();
 	}
@@ -164,18 +141,6 @@ public class Monitor extends Observable implements SharingSystem, Runnable {
 		{
 			if(checkForChange())
 			{
-				wait = true;
-				while(hasChanged())
-				{
-					try 
-					{
-						t.wait();
-					} 
-					catch (InterruptedException e) 
-					{
-						e.printStackTrace();
-					}
-				}
 				System.out.println("Notifying observers...");
 				setChanged();
 				System.out.println("Setting changed...");
@@ -192,15 +157,5 @@ public class Monitor extends Observable implements SharingSystem, Runnable {
 				e.printStackTrace();
 			}
 		}
-	}
-	
-	public void setWait(boolean in)
-	{
-		this.wait = in;
-	}
-	
-	public void stopThread()
-	{
-		t.stop();
 	}
 }
