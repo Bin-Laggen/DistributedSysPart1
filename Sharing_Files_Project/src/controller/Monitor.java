@@ -17,9 +17,11 @@ public class Monitor extends Observable implements SharingSystem, Runnable {
 	private final String PATH = "D:\\Dokumenty\\College\\Year 3\\Java - Distributed Systems Programming\\Server\\";
 	private String[] fileNames = null;
 	private Thread t;
+	private boolean execute;
 	
 	private Monitor()
 	{
+		execute = true;
 		getNames();
 		t = new Thread(this, "Check Change Thread");
 		t.start();
@@ -137,7 +139,7 @@ public class Monitor extends Observable implements SharingSystem, Runnable {
 	@Override
 	public void run()
 	{
-		while(true)
+		while(execute)
 		{
 			if(checkForChange())
 			{
@@ -157,5 +159,10 @@ public class Monitor extends Observable implements SharingSystem, Runnable {
 				e.printStackTrace();
 			}
 		}
+	}
+	
+	public void threadStop()
+	{
+		execute = false;
 	}
 }

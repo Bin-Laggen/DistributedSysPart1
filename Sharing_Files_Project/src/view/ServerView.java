@@ -56,6 +56,10 @@ public class ServerView extends VBox implements Observer {
 				drawFileButtons(mon.getNames());
 			}
 		});
+		
+		primaryStage.setOnCloseRequest(e->{
+			mon.threadStop();
+		});
 	}
 	
 	public void drawFileButtons(String[] names)
