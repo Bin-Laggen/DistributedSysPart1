@@ -17,6 +17,7 @@ import javafx.scene.media.MediaPlayer;
 import javafx.scene.media.MediaPlayer.Status;
 import javafx.scene.text.Text;
 import javafx.stage.DirectoryChooser;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
 public class ServerView extends VBox implements Observer {
@@ -25,16 +26,23 @@ public class ServerView extends VBox implements Observer {
 	private Button selectDestButton;
 	private String output = "";
 	private Monitor mon;
-	private DirectoryChooser chooser;
+	private DirectoryChooser dirChooser;
+	private FileChooser fileChooser;
 	private File dest;
+	private File uploadFile;
 	private MediaPlayer mPlayer;
+	private Button uploadButton;
 	
 	public ServerView(Stage primaryStage)
 	{
 		selectDestButton = new Button("Select Local Folder");
+		uploadButton = new Button("Select a file for upload");
+		uploadButton.setMinWidth(100);
 		text = new Text(output);
-		chooser = new DirectoryChooser();
-		chooser.setTitle("Select Location");
+		dirChooser = new DirectoryChooser();
+		dirChooser.setTitle("Select Location");
+		fileChooser = new FileChooser();
+		fileChooser.setTitle("Select File");
 		mon = Monitor.getInstance();
 		mon.addObserver(this);
 		this.setMinWidth(600);
@@ -43,7 +51,7 @@ public class ServerView extends VBox implements Observer {
 		this.getChildren().add(selectDestButton);		
 		
 		selectDestButton.setOnAction(e->{
-			dest = chooser.showDialog(primaryStage);
+			dest = dirChooser.showDialog(primaryStage);
 			text.setText(output);
 			if(dest != null)
 			{
@@ -54,6 +62,21 @@ public class ServerView extends VBox implements Observer {
 			if(mon.checkForChange())
 			{
 				drawFileButtons(mon.getNames());
+			}
+		});
+		
+		uploadButton.setOnAction(e->{
+			uploadFile = fileChooser.showOpenDialog(primaryStage);
+			if(uploadFile != null)
+			{
+				try 
+				{
+					mon.copyFile(uploadFile, new File(mon.getServerPath()));
+				} 
+				catch (IOException e1) 
+				{
+					e1.printStackTrace();
+				}
 			}
 		});
 		
@@ -91,27 +114,24 @@ public class ServerView extends VBox implements Observer {
 			Button tmpPlay = new Button("Play");
 			tmpPlay.setId(names[i]);
 			tmpPlay.setMinWidth(30);
-			Button tmpLoad = new Button("Load");
-			tmpLoad.setId(names[i]);
-			tmpLoad.setMinWidth(30);
 			if(found)
 			{
 				tmpDwnld.setDisable(true);
-				tmpLoad.setDisable(false);
+				tmpPlay.setDisable(false);
 			}
 			else
 			{
 				tmpDwnld.setDisable(false);
-				tmpLoad.setDisable(true);
+				tmpPlay.setDisable(true);
 			}
-			tmpPlay.setDisable(true);
+
 			tmpDwnld.setOnAction(e->{
 				try 
 				{
-					if(mon.copyFile(tmpDwnld.getId(), dest))
+					if(mon.copyFile(new File(mon.getServerPath() + "\\" + tmpDwnld.getId()), dest))
 					{
-						tmpLoad.setDisable(false);
 						tmpDwnld.setDisable(true);
+						tmpPlay.setDisable(false);
 					}
 				} 
 				catch (IOException e1) 
@@ -121,29 +141,73 @@ public class ServerView extends VBox implements Observer {
 			});
 			
 			tmpPlay.setOnAction(e->{
+				boolean ready = false;
+				if(mPlayer == null)
+				{
+					mPlayer = new MediaPlayer(new Media(new File(dest + "/" + tmpPlay.getId()).toURI().toString()));
+					System.out.println("if");
+					ready = false;
+				}
+				else 
+				{
+					String nameURI = tmpPlay.getId().replaceAll(" ", "%20");
+					if(!mPlayer.getMedia().getSource().endsWith(nameURI))
+					{
+						System.out.println("mPlayer...: " + mPlayer.getMedia().getSource());
+						System.out.println("tmpPlay.getId(): " + tmpPlay.getId());
+						System.out.println("elif");
+						mPlayer.stop();
+						mPlayer = new MediaPlayer(new Media(new File(dest + "/" + tmpPlay.getId()).toURI().toString()));
+						ready = false;
+					}
+					else
+					{
+						ready = true;
+					}
+				}
 				System.out.println(mPlayer.getStatus());
-				if(mPlayer.getStatus() == Status.READY || mPlayer.getStatus() == Status.STOPPED || mPlayer.getStatus() == Status.PAUSED)
+				if(!ready)
 				{
-					mPlayer.play();
-					tmpPlay.setText("Pause");
+					mPlayer.setOnReady(new Runnable() {
+
+						@Override
+						public void run() {
+
+							if(mPlayer.getStatus() == Status.READY || mPlayer.getStatus() == Status.STOPPED || mPlayer.getStatus() == Status.PAUSED)
+							{
+								mPlayer.play();
+								tmpPlay.setText("Pause");
+							}
+							else if(mPlayer.getStatus() == Status.PLAYING)
+							{
+								mPlayer.pause();
+								tmpPlay.setText("Play");
+							}
+						}
+						
+					});
+					ready = true;
 				}
-				else if(mPlayer.getStatus() == Status.PLAYING)
+				else
 				{
-					mPlayer.pause();
-					tmpPlay.setText("Play");
+					if(mPlayer.getStatus() == Status.READY || mPlayer.getStatus() == Status.STOPPED || mPlayer.getStatus() == Status.PAUSED)
+					{
+						mPlayer.play();
+						tmpPlay.setText("Pause");
+					}
+					else if(mPlayer.getStatus() == Status.PLAYING)
+					{
+						mPlayer.pause();
+						tmpPlay.setText("Play");
+					}
 				}
+
 			});
 			
-			tmpLoad.setOnAction(e->{
-				mPlayer = new MediaPlayer(new Media(new File(dest + "/" + tmpPlay.getId()).toURI().toString()));
-				mPlayer.stop();
-				System.out.println(mPlayer.getMedia().getSource());
-				tmpPlay.setDisable(false);
-			});
-			tmpBox.getChildren().addAll(tmpText, tmpDwnld, tmpLoad, tmpPlay);
+			tmpBox.getChildren().addAll(tmpText, tmpDwnld, tmpPlay);
 			Platform.runLater(() -> this.getChildren().add(tmpBox));
 		}
-		Platform.runLater(() -> this.getChildren().addAll(text, selectDestButton));
+		Platform.runLater(() -> this.getChildren().addAll(text, selectDestButton, uploadButton));
 	}
 
 	@Override

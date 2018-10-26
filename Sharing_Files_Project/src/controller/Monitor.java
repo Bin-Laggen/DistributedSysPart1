@@ -56,9 +56,9 @@ public class Monitor extends Observable implements SharingSystem, Runnable {
 	}
 
 	@Override
-	public boolean copyFile(String fileName, File dest) throws IOException {
-		System.out.println("\nCopying file from: " + PATH + fileName);
-		File file = new File(PATH + fileName);
+	public boolean copyFile(File source, File dest) throws IOException {
+		System.out.println("\nCopying file from: " + source.getAbsolutePath());
+		String fileName = source.getName();
 		dest = new File(dest + "\\" + fileName);
 		System.out.println("To: " + dest.getAbsolutePath());
 		InputStream input = null;
@@ -70,7 +70,7 @@ public class Monitor extends Observable implements SharingSystem, Runnable {
 			{
 				try 
 				{
-					input = new FileInputStream(file);
+					input = new FileInputStream(source);
 				} 
 				catch (FileNotFoundException e) 
 				{
@@ -164,5 +164,10 @@ public class Monitor extends Observable implements SharingSystem, Runnable {
 	public void threadStop()
 	{
 		execute = false;
+	}
+	
+	public String getServerPath()
+	{
+		return PATH;
 	}
 }
