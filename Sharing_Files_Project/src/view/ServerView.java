@@ -3,6 +3,7 @@ package view;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Observable;
 import java.util.Observer;
 
@@ -32,6 +33,7 @@ public class ServerView extends VBox implements Observer {
 	private File uploadFile;
 	private MediaPlayer mPlayer;
 	private Button uploadButton;
+	private ArrayList<Button> buttons;
 	
 	public ServerView(Stage primaryStage)
 	{
@@ -87,6 +89,7 @@ public class ServerView extends VBox implements Observer {
 	
 	public void drawFileButtons(String[] names)
 	{
+		buttons = new ArrayList<Button>();
 		Platform.runLater(() -> this.getChildren().clear());
 		for(int i = 0; i < names.length; i++)
 		{
@@ -114,6 +117,8 @@ public class ServerView extends VBox implements Observer {
 			Button tmpPlay = new Button("Play");
 			tmpPlay.setId(names[i]);
 			tmpPlay.setMinWidth(30);
+			buttons.add(tmpPlay);
+			
 			if(found)
 			{
 				tmpDwnld.setDisable(true);
@@ -141,6 +146,13 @@ public class ServerView extends VBox implements Observer {
 			});
 			
 			tmpPlay.setOnAction(e->{
+				for(int j = 0; j < buttons.size(); j++)
+				{
+					if(!buttons.get(j).getId().equals(tmpPlay.getId()))
+					{
+						buttons.get(j).setText("Play");
+					}
+				}
 				boolean ready = false;
 				if(mPlayer == null)
 				{
@@ -165,14 +177,12 @@ public class ServerView extends VBox implements Observer {
 						ready = true;
 					}
 				}
-				System.out.println(mPlayer.getStatus());
 				if(!ready)
 				{
 					mPlayer.setOnReady(new Runnable() {
-
 						@Override
 						public void run() {
-
+							System.out.println(mPlayer.getStatus());
 							if(mPlayer.getStatus() == Status.READY || mPlayer.getStatus() == Status.STOPPED || mPlayer.getStatus() == Status.PAUSED)
 							{
 								mPlayer.play();
@@ -207,7 +217,7 @@ public class ServerView extends VBox implements Observer {
 			tmpBox.getChildren().addAll(tmpText, tmpDwnld, tmpPlay);
 			Platform.runLater(() -> this.getChildren().add(tmpBox));
 		}
-		Platform.runLater(() -> this.getChildren().addAll(text, selectDestButton, uploadButton));
+		Platform.runLater(() -> this.getChildren().addAll(text, uploadButton));
 	}
 
 	@Override
