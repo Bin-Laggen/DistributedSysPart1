@@ -61,10 +61,6 @@ public class ServerView extends VBox implements Observer {
 
 				drawFileButtons(mon.getNames());
 			}
-			if(mon.checkForChange())
-			{
-				drawFileButtons(mon.getNames());
-			}
 		});
 		
 		uploadButton.setOnAction(e->{
