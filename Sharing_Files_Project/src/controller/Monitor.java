@@ -56,10 +56,9 @@ public class Monitor extends Observable implements SharingSystem, Runnable {
 	}
 
 	@Override
-	public boolean copyFile(File source, File dest) throws IOException {
+	public synchronized boolean copyFile(File source, File dest) throws IOException {
 		System.out.println("\nCopying file from: " + source.getAbsolutePath());
-		String fileName = source.getName();
-		dest = new File(dest + "\\" + fileName);
+		dest = new File(dest + "\\" + source.getName());
 		System.out.println("To: " + dest.getAbsolutePath());
 		InputStream input = null;
 		OutputStream output = null;
@@ -117,18 +116,26 @@ public class Monitor extends Observable implements SharingSystem, Runnable {
 			oldNames[i] = fileNames[i];
 		}
 		getNames();
-		boolean diff = false;
-		int j = 0;
-		while(!diff && j < fileNames.length)
+		if(oldNames.length != fileNames.length)
 		{
-			if(!oldNames[j].equals(fileNames[j]))
-			{
-				diff = true;
-			}
-			j++;
+			System.out.println("...CHECKED\n");
+			return true;
 		}
-		System.out.println("...CHECKED\n");
-		return diff;
+		else
+		{
+			boolean diff = false;
+			int j = 0;
+			while(!diff && j < fileNames.length)
+			{
+				if(!oldNames[j].equals(fileNames[j]))
+				{
+					diff = true;
+				}
+				j++;
+			}
+			System.out.println("...CHECKED\n");
+			return diff;
+		}
 	}
 	
 	public void addObserver(Observer o)
