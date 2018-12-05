@@ -2,11 +2,11 @@ package view;
 
 import java.io.File;
 import java.io.FilenameFilter;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Observable;
 import java.util.Observer;
 
+import controller.Client;
 import controller.Monitor;
 import javafx.application.Platform;
 import javafx.scene.control.Button;
@@ -34,9 +34,16 @@ public class ServerView extends VBox implements Observer {
 	private MediaPlayer mPlayer;
 	private Button uploadButton;
 	private ArrayList<Button> buttons;
+	private Client client;
+
+	private final String GET_FILE_LIST = "1";
+	private final String DOWNLOAD_FILE = "2";
+	private final String UPLOAD_FILE = "3";
+	private final String EXIT = "EXIT";
 	
-	public ServerView(Stage primaryStage)
+	public ServerView(Stage primaryStage, Client client)
 	{
+		this.client = client;
 		selectDestButton = new Button("Select Local Folder");
 		uploadButton = new Button("Select a file for upload");
 		uploadButton.setMinWidth(100);
@@ -58,8 +65,10 @@ public class ServerView extends VBox implements Observer {
 			if(dest != null)
 			{
 				text.setText(text.getText() + "\nSelected Location: " + dest.getPath());
-
-				drawFileButtons(mon.getNames());
+				mon.setPath(dest.getPath());
+				mon.threadStart();
+				client.sendCommand(GET_FILE_LIST, null);
+				drawFileButtons(client.getServerFiles());
 			}
 		});
 		
@@ -67,19 +76,14 @@ public class ServerView extends VBox implements Observer {
 			uploadFile = fileChooser.showOpenDialog(primaryStage);
 			if(uploadFile != null)
 			{
-				try 
-				{
-					mon.copyFile(uploadFile, new File(mon.getServerPath()));
-				} 
-				catch (IOException e1) 
-				{
-					e1.printStackTrace();
-				}
+				client.sendCommand(UPLOAD_FILE, uploadFile);
 			}
 		});
 		
 		primaryStage.setOnCloseRequest(e->{
 			mon.threadStop();
+			client.sendCommand(EXIT, null);
+			client.threadStop();
 		});
 	}
 	
@@ -127,17 +131,10 @@ public class ServerView extends VBox implements Observer {
 			}
 
 			tmpDwnld.setOnAction(e->{
-				try 
+				if(client.sendCommand(DOWNLOAD_FILE, tmpDwnld.getId())) 
 				{
-					if(mon.copyFile(new File(mon.getServerPath() + "\\" + tmpDwnld.getId()), dest))
-					{
-						tmpDwnld.setDisable(true);
-						tmpPlay.setDisable(false);
-					}
-				} 
-				catch (IOException e1) 
-				{
-					e1.printStackTrace();
+					tmpDwnld.setDisable(true);
+					tmpPlay.setDisable(false);
 				}
 			});
 			
@@ -220,7 +217,7 @@ public class ServerView extends VBox implements Observer {
 	public void update(Observable o, Object arg) 
 	{
 		System.out.println("Updating graphics...");
-		drawFileButtons(mon.getNames());
+		drawFileButtons(client.getServerFiles());
 		System.out.println("Where the graphics at?");
 	}
 

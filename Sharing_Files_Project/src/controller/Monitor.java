@@ -14,17 +14,18 @@ import java.util.Observer;
 public class Monitor extends Observable implements SharingSystem, Runnable {
 	
 	private static Monitor monitor_instance = null;
-	private final String PATH = "D:\\Dokumenty\\College\\Year 3\\Java - Distributed Systems Programming\\Server\\";
+	private String path;
 	private String[] fileNames = null;
 	private Thread t;
 	private boolean execute;
+	private boolean changed;
 	
 	private Monitor()
 	{
+		path = null;
 		execute = true;
-		getNames();
+		changed = false;
 		t = new Thread(this, "Check Change Thread");
-		t.start();
 	}
 
 	public static synchronized Monitor getInstance()
@@ -37,10 +38,10 @@ public class Monitor extends Observable implements SharingSystem, Runnable {
 	}
 	
 	@Override
-	public String[] getNames() 
+	public synchronized String[] getNames() 
 	{
-		System.out.println("Getting names...");
-		File dir = new File(PATH);
+		//System.out.println("Getting names...");
+		File dir = new File(path);
 		if(dir.isDirectory())
 		{
 			fileNames = dir.list(new FilenameFilter() {
@@ -51,14 +52,14 @@ public class Monitor extends Observable implements SharingSystem, Runnable {
 			    } 
 			});
 		}
-		System.out.println("Names got...");
+		//System.out.println("Names got...");
 		return fileNames;
 	}
 
 	@Override
-	public synchronized boolean copyFile(File source, File dest) throws IOException {
+	public synchronized boolean copyFile(File source) throws IOException {
 		System.out.println("\nCopying file from: " + source.getAbsolutePath());
-		dest = new File(dest + "\\" + source.getName());
+		File dest = new File(path + "\\" + source.getName());
 		System.out.println("To: " + dest.getAbsolutePath());
 		InputStream input = null;
 		OutputStream output = null;
@@ -109,7 +110,7 @@ public class Monitor extends Observable implements SharingSystem, Runnable {
 
 	@Override
 	public synchronized boolean checkForChange() {
-		System.out.println("CHECKING...");
+		//System.out.println("CHECKING...");
 		String[] oldNames = new String[fileNames.length];
 		for(int i = 0; i < fileNames.length; i++)
 		{
@@ -133,7 +134,7 @@ public class Monitor extends Observable implements SharingSystem, Runnable {
 				}
 				j++;
 			}
-			System.out.println("...CHECKED\n");
+			//System.out.println("...CHECKED\n");
 			return diff;
 		}
 	}
@@ -148,8 +149,9 @@ public class Monitor extends Observable implements SharingSystem, Runnable {
 	{
 		while(execute)
 		{
-			if(checkForChange())
+			if(checkForChange() || changed)
 			{
+				changed = false;
 				System.out.println("Notifying observers...");
 				setChanged();
 				System.out.println("Setting changed...");
@@ -173,8 +175,23 @@ public class Monitor extends Observable implements SharingSystem, Runnable {
 		execute = false;
 	}
 	
-	public String getServerPath()
+	public void threadStart()
 	{
-		return PATH;
+		getNames();
+		t.start();
+	}
+	
+	public String getPath() {
+		return path;
+	}
+
+	public void setPath(String path)
+	{
+		this.path = path;
+	}
+	
+	public void setChange()
+	{
+		changed = true;
 	}
 }

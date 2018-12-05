@@ -23,7 +23,7 @@ public class MyMediaPlayer extends Application {
 		try 
 		{
 			pane = new GridPane();
-			box = new ServerView(primaryStage);
+			box = new ServerView(primaryStage, null);
 			root = new ScrollPane(pane);
 			pane.add(box, 0, 0);
 			pane.setPadding(new Insets(20));

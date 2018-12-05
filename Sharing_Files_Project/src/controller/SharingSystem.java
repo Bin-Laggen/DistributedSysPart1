@@ -7,7 +7,7 @@ public interface SharingSystem {
 	
 	public String[] getNames();
 	
-	public boolean copyFile(File source, File dest) throws IOException;
+	public boolean copyFile(File source) throws IOException;
 	
 	public boolean checkForChange();
 
