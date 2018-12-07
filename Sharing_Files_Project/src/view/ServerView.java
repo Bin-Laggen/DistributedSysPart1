@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.Observable;
 import java.util.Observer;
 
-import controller.Client;
+import application.Client;
 import controller.Monitor;
 import javafx.application.Platform;
 import javafx.scene.control.Button;
@@ -37,8 +37,9 @@ public class ServerView extends VBox implements Observer {
 	private VBox serverBox;
 	private VBox localBox;
 	
-	private String[] lFiles;	
+	private String[] lFiles;
 	private String[] sFiles;
+	private ArrayList<String> serverFiles;
 
 	private final String GET_FILE_LIST = "1";
 	private final String DOWNLOAD_FILE = "2";
@@ -82,7 +83,8 @@ public class ServerView extends VBox implements Observer {
 				client.sendCommand(GET_FILE_LIST, null);
 				this.getChildren().clear();
 				this.getChildren().addAll(serverBox, localBox);
-				drawServerFiles(client.getServerFiles());
+				sFiles = client.getServerFiles();
+				drawServerFiles(sFiles);
 				drawLocalFiles(mon.getNames());
 				client.threadStart();
 			}
@@ -105,7 +107,7 @@ public class ServerView extends VBox implements Observer {
 	
 	public void drawServerFiles(String[] names)
 	{		
-		sFiles = names;
+		serverFiles = new ArrayList<String>();
 		
 		Platform.runLater(() -> serverBox.getChildren().clear());
 		for(int i = 0; i < names.length; i++)
@@ -118,24 +120,23 @@ public class ServerView extends VBox implements Observer {
 					found = true;
 				}
 			}
+			if(!found)
+			{
+				serverFiles.add(names[i]);
+			}
+		}
+		for(int k = 0; k < serverFiles.size(); k++)
+		{
 			HBox tmpBox = new HBox(5);
-			Label tmpText = new Label(names[i]);
+			Label tmpText = new Label(serverFiles.get(k));
 			tmpText.setPrefWidth(300);
 			Button tmpDwnld = new Button("Download");
-			tmpDwnld.setId(names[i]);
+			tmpDwnld.setId(serverFiles.get(k));
 			tmpDwnld.setMinWidth(50);
 			
-			if(found)
-			{
-				tmpDwnld.setDisable(true);
-			}
-			else
-			{
-				tmpDwnld.setDisable(false);
-			}
-
 			tmpDwnld.setOnAction(e->{
-				if(client.sendCommand(DOWNLOAD_FILE, tmpDwnld.getId())) 
+				System.out.println("DOWNLOAD: " + tmpDwnld.getId());
+				if(client.sendCommand(DOWNLOAD_FILE, tmpDwnld.getId()))
 				{
 					tmpDwnld.setDisable(true);
 				}
@@ -269,8 +270,10 @@ public class ServerView extends VBox implements Observer {
 	public void update(Observable o, Object arg) 
 	{
 		System.out.println("Updating graphics...");
-		drawServerFiles(client.getServerFiles());
-		drawLocalFiles(mon.getNames());
+		sFiles = client.getServerFiles();
+		lFiles = mon.getNames();
+		drawServerFiles(sFiles);
+		drawLocalFiles(lFiles);
 		System.out.println("Where the graphics at?");
 	}
 

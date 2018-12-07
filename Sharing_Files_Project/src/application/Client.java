@@ -1,10 +1,11 @@
-package controller;
+package application;
 
 import java.io.*;
 import java.net.*;
 import java.util.Arrays;
 import java.util.List;
 
+import controller.Monitor;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
@@ -40,12 +41,10 @@ public class Client extends Application implements Runnable {
 	private final String CONFIRMED = "4_3";
 
 	private Monitor mon = Monitor.getInstance();
-	//private ClientThread t = new ClientThread(socket, "Check Server Change Thread");
 	private Thread t;
 
 	private boolean execute;
 	private boolean checkForUpdate;
-	//private boolean busy;
 
 	private String[] serverFiles;
 
@@ -197,7 +196,9 @@ public class Client extends Application implements Runnable {
 				try 
 				{
 					out.writeObject(data);
-					mon.copyFile((File) in.readObject());
+					Object file = in.readObject();
+					System.out.println(file);
+					mon.copyFile((File) file);
 					out.writeObject(COMPLETE);
 				} 
 				catch (IOException e) 

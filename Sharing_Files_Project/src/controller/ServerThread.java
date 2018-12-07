@@ -176,7 +176,9 @@ public class ServerThread extends Thread implements Observer {
 			out.writeObject(WAITING_FOR_FILE_NAME);
 			String fileName = (String) in.readObject();
 			File file = new File(mon.getPath() + "\\" + fileName);
+			System.out.println(file.getName());
 			out.writeObject(file);
+			System.out.println(file + " sent");
 			if(in.readObject().equals(COMPLETE))
 			{
 				//out.reset();

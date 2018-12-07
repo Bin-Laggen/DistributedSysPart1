@@ -1,8 +1,11 @@
-package controller;
+package application;
 
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+
+import controller.ServerMonitor;
+import controller.ServerThread;
 
 public class SharedServer {
 	
@@ -30,6 +33,7 @@ public class SharedServer {
 			{
 				Socket socket = serverSocket.accept();
 				counter++;
+				System.out.println("Connecting new client...");
 				new ServerThread("Server Thread" + counter, socket).start();
 			}
 		} 
