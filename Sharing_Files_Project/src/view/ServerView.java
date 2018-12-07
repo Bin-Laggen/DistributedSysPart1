@@ -1,7 +1,6 @@
 package view;
 
 import java.io.File;
-import java.io.FilenameFilter;
 import java.util.ArrayList;
 import java.util.Observable;
 import java.util.Observer;
@@ -35,11 +34,16 @@ public class ServerView extends VBox implements Observer {
 	private Button uploadButton;
 	private ArrayList<Button> buttons;
 	private Client client;
+	private VBox serverBox;
+	private VBox localBox;
+	
+	private String[] lFiles;	
+	private String[] sFiles;
 
 	private final String GET_FILE_LIST = "1";
 	private final String DOWNLOAD_FILE = "2";
 	private final String UPLOAD_FILE = "3";
-	private final String EXIT = "EXIT";
+	private final String EXIT = "5";
 	
 	public ServerView(Stage primaryStage, Client client)
 	{
@@ -54,6 +58,13 @@ public class ServerView extends VBox implements Observer {
 		fileChooser.setTitle("Select File");
 		mon = Monitor.getInstance();
 		mon.addObserver(this);
+		
+		serverBox = new VBox(5);
+		serverBox.setMinWidth(600);
+		
+		localBox = new VBox(5);
+		localBox.setMinWidth(600);
+		
 		this.setMinWidth(600);
 		this.setSpacing(5);
 		
@@ -67,8 +78,13 @@ public class ServerView extends VBox implements Observer {
 				text.setText(text.getText() + "\nSelected Location: " + dest.getPath());
 				mon.setPath(dest.getPath());
 				mon.threadStart();
+				lFiles = mon.getNames();
 				client.sendCommand(GET_FILE_LIST, null);
-				drawFileButtons(client.getServerFiles());
+				this.getChildren().clear();
+				this.getChildren().addAll(serverBox, localBox);
+				drawServerFiles(client.getServerFiles());
+				drawLocalFiles(mon.getNames());
+				client.threadStart();
 			}
 		});
 		
@@ -87,23 +103,17 @@ public class ServerView extends VBox implements Observer {
 		});
 	}
 	
-	public void drawFileButtons(String[] names)
-	{
-		buttons = new ArrayList<Button>();
-		Platform.runLater(() -> this.getChildren().clear());
+	public void drawServerFiles(String[] names)
+	{		
+		sFiles = names;
+		
+		Platform.runLater(() -> serverBox.getChildren().clear());
 		for(int i = 0; i < names.length; i++)
 		{
 			boolean found = false;
-			String[] localFiles = dest.list(new FilenameFilter() {
-			    @Override
-			    public boolean accept(File dir, String name) 
-			    {
-			        return name.endsWith(".mp3");
-			    } 
-			});
-			for(int j = 0; j < localFiles.length; j++)
+			for(int j = 0; j < lFiles.length; j++)
 			{
-				if(names[i].equals(localFiles[j]))
+				if(names[i].equals(lFiles[j]))
 				{
 					found = true;
 				}
@@ -114,6 +124,49 @@ public class ServerView extends VBox implements Observer {
 			Button tmpDwnld = new Button("Download");
 			tmpDwnld.setId(names[i]);
 			tmpDwnld.setMinWidth(50);
+			
+			if(found)
+			{
+				tmpDwnld.setDisable(true);
+			}
+			else
+			{
+				tmpDwnld.setDisable(false);
+			}
+
+			tmpDwnld.setOnAction(e->{
+				if(client.sendCommand(DOWNLOAD_FILE, tmpDwnld.getId())) 
+				{
+					tmpDwnld.setDisable(true);
+				}
+			});
+			
+			tmpBox.getChildren().addAll(tmpText, tmpDwnld);
+			Platform.runLater(() -> serverBox.getChildren().add(tmpBox));
+		}
+	}	
+
+	private void drawLocalFiles(String[] names) {
+		
+		buttons = new ArrayList<Button>();
+		
+		Platform.runLater(() -> localBox.getChildren().clear());
+		for(int i = 0; i < names.length; i++)
+		{
+			boolean found = false;
+			for(int j = 0; j < sFiles.length; j++)
+			{
+				if(names[i].equals(sFiles[j]))
+				{
+					found = true;
+				}
+			}
+			HBox tmpBox = new HBox(5);
+			Label tmpText = new Label(names[i]);
+			tmpText.setPrefWidth(300);
+			Button tmpUpld = new Button("Upload");
+			tmpUpld.setId(names[i]);
+			tmpUpld.setMinWidth(50);
 			Button tmpPlay = new Button("Play");
 			tmpPlay.setId(names[i]);
 			tmpPlay.setMinWidth(30);
@@ -121,78 +174,67 @@ public class ServerView extends VBox implements Observer {
 			
 			if(found)
 			{
-				tmpDwnld.setDisable(true);
-				tmpPlay.setDisable(false);
+				tmpUpld.setDisable(true);
 			}
 			else
 			{
-				tmpDwnld.setDisable(false);
-				tmpPlay.setDisable(true);
+				tmpUpld.setDisable(false);
 			}
 
-			tmpDwnld.setOnAction(e->{
-				if(client.sendCommand(DOWNLOAD_FILE, tmpDwnld.getId())) 
-				{
-					tmpDwnld.setDisable(true);
-					tmpPlay.setDisable(false);
-				}
+			tmpUpld.setOnAction(e->{
+				client.sendCommand(UPLOAD_FILE, new File(mon.getPath() + "\\" + tmpUpld.getId()));
+				tmpUpld.setDisable(true);
 			});
 			
 			tmpPlay.setOnAction(e->{
-				for(int j = 0; j < buttons.size(); j++)
-				{
-					if(!buttons.get(j).getId().equals(tmpPlay.getId()))
-					{
-						buttons.get(j).setText("Play");
-					}
-				}
-				boolean ready = false;
-				if(mPlayer == null)
-				{
-					mPlayer = new MediaPlayer(new Media(new File(dest + "/" + tmpPlay.getId()).toURI().toString()));
-					System.out.println("if");
-					ready = false;
-				}
-				else 
-				{
-					String nameURI = tmpPlay.getId().replaceAll(" ", "%20");
-					if(!mPlayer.getMedia().getSource().endsWith(nameURI))
-					{
-						System.out.println("mPlayer...: " + mPlayer.getMedia().getSource());
-						System.out.println("tmpPlay.getId(): " + tmpPlay.getId());
-						System.out.println("elif");
-						mPlayer.stop();
-						mPlayer = new MediaPlayer(new Media(new File(dest + "/" + tmpPlay.getId()).toURI().toString()));
-						ready = false;
-					}
-					else
-					{
-						ready = true;
-					}
-				}
-				if(!ready)
-				{
-					mPlayer.setOnReady(new Runnable() {
-						@Override
-						public void run() {
-							System.out.println(mPlayer.getStatus());
-							if(mPlayer.getStatus() == Status.READY || mPlayer.getStatus() == Status.STOPPED || mPlayer.getStatus() == Status.PAUSED)
-							{
-								mPlayer.play();
-								tmpPlay.setText("Pause");
-							}
-							else if(mPlayer.getStatus() == Status.PLAYING)
-							{
-								mPlayer.pause();
-								tmpPlay.setText("Play");
-							}
-						}
-						
-					});
-					ready = true;
-				}
-				else
-				{
+				playAction(tmpPlay);
+			});
+			
+			tmpBox.getChildren().addAll(tmpText, tmpUpld, tmpPlay);
+			Platform.runLater(() -> localBox.getChildren().add(tmpBox));
+		}
+		Platform.runLater(() -> localBox.getChildren().addAll(text, uploadButton));
+	}
+
+	private void playAction(Button tmpPlay)
+	{
+		for(int j = 0; j < buttons.size(); j++)
+		{
+			if(!buttons.get(j).getId().equals(tmpPlay.getId()))
+			{
+				buttons.get(j).setText("Play");
+			}
+		}
+		boolean ready = false;
+		if(mPlayer == null)
+		{
+			mPlayer = new MediaPlayer(new Media(new File(dest + "/" + tmpPlay.getId()).toURI().toString()));
+			System.out.println("if");
+			ready = false;
+		}
+		else 
+		{
+			String nameURI = tmpPlay.getId().replaceAll(" ", "%20");
+			if(!mPlayer.getMedia().getSource().endsWith(nameURI))
+			{
+				System.out.println("mPlayer...: " + mPlayer.getMedia().getSource());
+				System.out.println("tmpPlay.getId(): " + tmpPlay.getId());
+				System.out.println("elif");
+				mPlayer.stop();
+				mPlayer = new MediaPlayer(new Media(new File(dest + "/" + tmpPlay.getId()).toURI().toString()));
+				ready = false;
+			}
+			else
+			{
+				ready = true;
+			}
+		}
+		if(!ready)
+		{
+			mPlayer.setOnReady(new Runnable() {
+				@Override
+				public void run() {
+					System.out.println(mPlayer.getStatus());
 					if(mPlayer.getStatus() == Status.READY || mPlayer.getStatus() == Status.STOPPED || mPlayer.getStatus() == Status.PAUSED)
 					{
 						mPlayer.play();
@@ -204,21 +246,33 @@ public class ServerView extends VBox implements Observer {
 						tmpPlay.setText("Play");
 					}
 				}
-
+				
 			});
-			
-			tmpBox.getChildren().addAll(tmpText, tmpDwnld, tmpPlay);
-			Platform.runLater(() -> this.getChildren().add(tmpBox));
+			ready = true;
 		}
-		Platform.runLater(() -> this.getChildren().addAll(text, uploadButton));
+		else
+		{
+			if(mPlayer.getStatus() == Status.READY || mPlayer.getStatus() == Status.STOPPED || mPlayer.getStatus() == Status.PAUSED)
+			{
+				mPlayer.play();
+				tmpPlay.setText("Pause");
+			}
+			else if(mPlayer.getStatus() == Status.PLAYING)
+			{
+				mPlayer.pause();
+				tmpPlay.setText("Play");
+			}
+		}
 	}
-
+	
 	@Override
 	public void update(Observable o, Object arg) 
 	{
 		System.out.println("Updating graphics...");
-		drawFileButtons(client.getServerFiles());
+		drawServerFiles(client.getServerFiles());
+		drawLocalFiles(mon.getNames());
 		System.out.println("Where the graphics at?");
 	}
+
 
 }

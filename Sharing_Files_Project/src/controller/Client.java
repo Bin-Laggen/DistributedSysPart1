@@ -15,7 +15,7 @@ import javafx.stage.Stage;
 import view.ServerView;
 
 public class Client extends Application implements Runnable {
-	
+
 	private ScrollPane root;
 	private GridPane pane;
 	private Scene scene;
@@ -25,35 +25,42 @@ public class Client extends Application implements Runnable {
 	private static Socket socket;
 	private static ObjectOutputStream out;
 	private static ObjectInputStream in;
-	
+
 	private final String GET_FILE_LIST = "1";
 	private final String DOWNLOAD_FILE = "2";
 	private final String UPLOAD_FILE = "3";
 	private final String CHECK_FOR_CHANGE = "4";
-	private final String EXIT = "EXIT";
+	private final String EXIT = "5";
+	private final String COMPLETE = "6";
 	private final String WAITING_FOR_FILE_NAME = "2_1";
+	private final String RECEIVED = "2_2";
 	private final String WAITING_FOR_FILE = "3_1";
-	
+	private final String CHANGED = "4_1";
+	private final String NOT_CHANGED = "4_2";
+	private final String CONFIRMED = "4_3";
+
 	private Monitor mon = Monitor.getInstance();
-	private static Thread t;
-	
-	private static boolean execute;
-	
+	//private ClientThread t = new ClientThread(socket, "Check Server Change Thread");
+	private Thread t;
+
+	private boolean execute;
+	private boolean checkForUpdate;
+	//private boolean busy;
+
 	private String[] serverFiles;
-	
+
 	public static void main(String[] args) throws IOException {
 
-		/**
+
 		if (args.length != 2) 
 		{
 			System.err.println("Usage: java Client <host name> <port number>");
 			System.exit(1);
 		}
-		*/
 
-		hostName = "localhost";
-		portNumber = 1234;
-		
+		hostName = args[0];
+		portNumber = Integer.parseInt(args[1]);
+
 		openConnection();
 
 		launch(args);
@@ -62,9 +69,10 @@ public class Client extends Application implements Runnable {
 
 	@Override
 	public void start(Stage primaryStage) {
-		
+
 		try 
 		{
+			System.out.println("THREAD STARTED");
 			System.out.println("LAUNCHNG GUI");
 			pane = new GridPane();
 			box = new ServerView(primaryStage, this);
@@ -74,14 +82,14 @@ public class Client extends Application implements Runnable {
 			scene = new Scene(root,800, 600);
 			primaryStage.setScene(scene);
 			primaryStage.show();
-			
+
 		} 
 		catch(Exception e) 
 		{
 			e.printStackTrace();
 		}
 	}
-	
+
 	private static void openConnection()
 	{
 		try
@@ -90,9 +98,8 @@ public class Client extends Application implements Runnable {
 			out = new ObjectOutputStream(socket.getOutputStream());
 			in = new ObjectInputStream(socket.getInputStream());	
 
-			execute = true;
-			t = new Thread("Check Server Change Thread");
-			t.start();
+			System.out.println("CONNECTION OPENED");
+
 		} 
 		catch (UnknownHostException e) 
 		{
@@ -105,35 +112,47 @@ public class Client extends Application implements Runnable {
 			System.exit(1);
 		}
 	}
-	
+
 	public boolean sendCommand(String command, Object data)
 	{		
 		try 
 		{
+			//busy = true;
 			out.writeObject(command);
 			out.flush();
 			System.out.println(command);
 			if(command.equals(GET_FILE_LIST))
 			{
+				System.out.println("Requesting List");
 				receiveFileList();
+				System.out.println("List received");
 			}
 			else if(command.equals(DOWNLOAD_FILE))
 			{
+				System.out.println("Requesting file");
 				downloadFile(data);
+				System.out.println("File received");
 			}
 			else if(command.equals(UPLOAD_FILE))
 			{
+				System.out.println("Sending file");
 				uploadFile(data);
+				System.out.println("File sent");
 			}
 			else if(command.equals(CHECK_FOR_CHANGE))
 			{
+				System.out.println("Requesting change");
+				checkForUpdate = false;
 				receiveChange();
+				checkForUpdate = true;
+				System.out.println("Change received");
 			}
 			else if(command.equals(EXIT))
 			{
 				exit();
 			}
-		    return true;
+			//busy = false;
+			return true;
 		} 
 		catch (IOException e) 
 		{
@@ -141,21 +160,33 @@ public class Client extends Application implements Runnable {
 			return false;
 		}
 	}
-	
+
 	private void receiveChange() {
 		try 
 		{
-			boolean change = (boolean) in.readObject();
-			if(change)
+			do
 			{
-				mon.setChange();
+				System.out.println("Reading object");
+				Object change = in.readObject();
+				System.out.println("Object" + change);
+				if(change.equals(true))
+				{
+					mon.setChange();
+					out.writeObject(CHANGED);
+				}
+				else
+				{
+					out.writeObject(NOT_CHANGED);
+				}
 			}
+			while(!in.readObject().equals(CONFIRMED));
+			out.writeObject(COMPLETE);
 		} 
 		catch (ClassNotFoundException | IOException e) 
 		{
 			e.printStackTrace();
 		}
-		
+
 	}
 
 	private void downloadFile(Object data) {
@@ -167,6 +198,7 @@ public class Client extends Application implements Runnable {
 				{
 					out.writeObject(data);
 					mon.copyFile((File) in.readObject());
+					out.writeObject(COMPLETE);
 				} 
 				catch (IOException e) 
 				{
@@ -188,7 +220,13 @@ public class Client extends Application implements Runnable {
 			{
 				try 
 				{
+					System.out.println("Sending: " + data.toString());
 					out.writeObject(data);
+					if(in.readObject().equals(RECEIVED))
+					{
+						System.out.println("Sent");
+						out.writeObject(COMPLETE);
+					}
 				} 
 				catch (IOException e) 
 				{
@@ -208,61 +246,60 @@ public class Client extends Application implements Runnable {
 		{
 			@SuppressWarnings("unchecked")
 			List<String> data = (List<String>) in.readObject();
-			serverFiles = new String[data.size()];
-			serverFiles = data.toArray(serverFiles);
+			serverFiles = new String[(data).size()];
+			serverFiles = (data).toArray(serverFiles);
 			System.out.println(Arrays.toString(serverFiles));
+			out.writeObject(COMPLETE);
 		} 
 		catch (ClassNotFoundException | IOException e) 
 		{
 			e.printStackTrace();
 		}
 	}
-	
+
 	public void exit()
 	{
 		try 
 		{
 			System.out.println("Exiting");
-			out.writeObject(EXIT);
-			System.out.println("Object Written");
+			threadStop();
+			System.out.println("Threads stopped");
+			in.close();
+			System.out.println("In closed");
 			out.close();
 			System.out.println("Out closed");
-		    in.close();
-		    System.out.println("In closed");
-		    socket.close();
-		    System.out.println("Socket closed");
+			socket.close();
+			System.out.println("Socket closed");
+
 		} 
 		catch (IOException e) 
 		{
 			e.printStackTrace();
 		}
 	}
-	
+
 	public String[] getServerFiles()
 	{
+		sendCommand(GET_FILE_LIST, null);
 		return serverFiles;
 	}
 
 	@Override
-	public void run() {
+	public void run() 
+	{
 		while(execute)
 		{
-			try 
+			while(checkForUpdate) //stop this loop if a different operation is being carried out
 			{
-				System.out.println("EXECUTING");
-				Object input = in.readObject();
-				System.out.println(input);
-				if(input instanceof Boolean)
+				sendCommand(CHECK_FOR_CHANGE, null);
+				try 
 				{
-					if((boolean) input)
-					{
-						mon.setChange();
-					}
+					Thread.sleep(1000);
+				} 
+				catch (InterruptedException e) 
+				{
+					e.printStackTrace();
 				}
-			} 
-			catch (ClassNotFoundException | IOException e1) 
-			{
-				e1.printStackTrace();
 			}
 			try 
 			{
@@ -274,10 +311,20 @@ public class Client extends Application implements Runnable {
 			}
 		}
 	}
-	
+
 	public void threadStop()
 	{
+		checkForUpdate = false;
 		execute = false;
 	}
-	
+
+	public void threadStart()
+	{
+		checkForUpdate = true;
+		execute = true;
+		//busy = false;
+		t = new Thread(Client.this, "SERVER CHECK DATA THREAD");
+		t.start();
+	}
+
 }

@@ -2,23 +2,24 @@ package controller;
 
 import java.io.IOException;
 import java.net.ServerSocket;
+import java.net.Socket;
 
 public class SharedServer {
 	
 	private static int portNumber;
 	private static boolean listening;
-	private static Monitor mon;
+	private static ServerMonitor mon;
 	
 	public static void main(String[] args) throws IOException {
 
+		int counter = 0;
 		if (args.length != 1) {
 			System.err.println("Usage: java SharedServer <port number>");
 			System.exit(1);
 		}
 		
-		mon = Monitor.getInstance();
+		mon = ServerMonitor.getInstance();
 		mon.setPath("D:\\Dokumenty\\College\\Year 3\\Java - Distributed Systems Programming\\Server");
-		mon.threadStart();
 
 		portNumber = Integer.parseInt(args[0]);
 		listening = true;
@@ -27,7 +28,9 @@ public class SharedServer {
 		{ 
 			while (listening) 
 			{
-				new ServerThread(serverSocket.accept()).start();
+				Socket socket = serverSocket.accept();
+				counter++;
+				new ServerThread("Server Thread" + counter, socket).start();
 			}
 		} 
 		catch (IOException e) 
