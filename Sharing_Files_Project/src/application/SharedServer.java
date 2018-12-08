@@ -1,46 +1,51 @@
 package application;
 
 import java.io.IOException;
-import java.net.ServerSocket;
-import java.net.Socket;
+import java.rmi.AlreadyBoundException;
+import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
+import java.rmi.server.UnicastRemoteObject;
 
+import controller.RemoteInterface;
 import controller.ServerMonitor;
-import controller.ServerThread;
 
-public class SharedServer {
-	
+public class SharedServer extends UnicastRemoteObject implements RemoteInterface {
+
+	private static final long serialVersionUID = 1L;
 	private static int portNumber;
-	private static boolean listening;
 	private static ServerMonitor mon;
+	
+	protected SharedServer() throws RemoteException {
+		super();
+	}
 	
 	public static void main(String[] args) throws IOException {
 
-		int counter = 0;
 		if (args.length != 1) {
 			System.err.println("Usage: java SharedServer <port number>");
 			System.exit(1);
 		}
 		
+		portNumber = Integer.parseInt(args[0]);
+
 		mon = ServerMonitor.getInstance();
 		mon.setPath("D:\\Dokumenty\\College\\Year 3\\Java - Distributed Systems Programming\\Server");
-
-		portNumber = Integer.parseInt(args[0]);
-		listening = true;
-
-		try (ServerSocket serverSocket = new ServerSocket(portNumber)) 
-		{ 
-			while (listening) 
-			{
-				Socket socket = serverSocket.accept();
-				counter++;
-				System.out.println("Connecting new client...");
-				new ServerThread("Server Thread" + counter, socket).start();
-			}
-		} 
-		catch (IOException e) 
+		
+		Registry reg = LocateRegistry.createRegistry(portNumber);
+		
+		try 
 		{
-			System.err.println("Could not listen on port " + portNumber);
-			System.exit(-1);
+			reg.bind("Client", new SharedServer());
+		} 
+		catch (AlreadyBoundException e1) 
+		{
+			e1.printStackTrace();
 		}
+	}
+
+	@Override
+	public void connectClient() {
+		
 	}
 }

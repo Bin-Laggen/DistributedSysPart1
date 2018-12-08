@@ -2,10 +2,13 @@ package application;
 
 import java.io.*;
 import java.net.*;
+import java.rmi.Naming;
+import java.rmi.NotBoundException;
 import java.util.Arrays;
 import java.util.List;
 
 import controller.Monitor;
+import controller.RemoteInterface;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
@@ -22,7 +25,7 @@ public class Client extends Application implements Runnable {
 	private Scene scene;
 	private VBox box;
 	private static String hostName;
-	private static int portNumber;
+	private static String bindName;
 	private static Socket socket;
 	private static ObjectOutputStream out;
 	private static ObjectInputStream in;
@@ -45,6 +48,8 @@ public class Client extends Application implements Runnable {
 
 	private boolean execute;
 	private boolean checkForUpdate;
+	
+	private static RemoteInterface server;
 
 	private String[] serverFiles;
 
@@ -53,12 +58,12 @@ public class Client extends Application implements Runnable {
 
 		if (args.length != 2) 
 		{
-			System.err.println("Usage: java Client <host name> <port number>");
+			System.err.println("Usage: java Client <host name> <bind name>");
 			System.exit(1);
 		}
 
 		hostName = args[0];
-		portNumber = Integer.parseInt(args[1]);
+		bindName = args[1];
 
 		openConnection();
 
@@ -93,7 +98,8 @@ public class Client extends Application implements Runnable {
 	{
 		try
 		{
-			socket = new Socket(hostName, portNumber);
+			server = (RemoteInterface) Naming.lookup("rmi://" + hostName + "/" + bindName);
+			//socket = new Socket(hostName, portNumber);
 			out = new ObjectOutputStream(socket.getOutputStream());
 			in = new ObjectInputStream(socket.getInputStream());	
 
@@ -109,6 +115,9 @@ public class Client extends Application implements Runnable {
 		{
 			System.err.println("Couldn't get I/O for the connection to " + hostName);
 			System.exit(1);
+		} catch (NotBoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 	}
 
